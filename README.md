@@ -4,7 +4,7 @@ Converts the bytes of a binary file into source code (C/C++, JavaScript, Rogue) 
 About     | Current Release
 ----------|-----------------------
 Version   | 1.0
-Date      | April 6, 2024
+Date      | April 7, 2024
 Platforms | Windows, macOS, Linux
 Author    | Brom Bresenham
 
