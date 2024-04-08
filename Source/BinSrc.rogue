@@ -1,0 +1,172 @@
+#================================================================================
+# BinSrc.rogue
+# April 6, 2024
+#================================================================================
+
+$define VERSION "1.0"
+$define DATE    "April 6, 2024"
+
+$requireRogue "2.34"
+
+uses Codec/Base64
+uses Console/CommandLineParser
+
+try
+  BinSrc( System.command_line_arguments )
+catch (error:Error)
+  Console.error.println error
+  System.exit 1
+endTry
+
+class BinSrc
+  PROPERTIES
+    target     = "c"
+    file_count = 0
+
+  METHODS
+    method init( args:String[] )
+      local command = parse_args( args )
+
+      if (command//options//target)
+        target = command//options//target->String.to_lowercase
+      endIf
+
+      if (command//options//help or command//args.count == 0)
+        print_usage
+        System.exit 0
+      endIf
+
+      display( File((forEach in command//args)->String) )
+
+    method display( file:File )
+      if (not file.exists) throw Error( "No such file: " + file )
+      local bytes = Byte[]( file )
+      ++file_count
+
+      local varname = String()
+      forEach (ch in file.without_extension.filename)
+        if (ch.is_identifier) varname.print( ch )
+        else                  varname.print( '_' )
+      endForEach
+
+      local result : String
+      which (target)
+        case "c", "c++", "cpp": result = generate_c( varname, bytes )
+        case "hex":             result = generate_hex( varname, bytes )
+        case "js","javascript": result = generate_js( varname, file.extension, bytes )
+        case "rogue", "boss":   result = generate_rogue( varname, bytes )
+        others:                 print_usage; System.exit(1)
+      endWhich
+      print result
+
+    method generate_c( varname:String, bytes:Byte[] )->String
+      local result = String()
+      result.println "extern const unsigned char $[$];"(varname,bytes.count)
+      result.println
+      result.println "const unsigned char $[$] = "(varname,bytes.count)
+      result.println "{"
+      result.print   "  "
+      local n = 0
+      forEach (byte in bytes)
+        if (n == 16) result.print ",\n  "; n = 0
+        elseIf (n)   result.print ","
+
+        result.print( byte.format("3") )
+        ++n
+      endForEach
+      if (n) result.println
+      result.println "};"
+      return result
+
+    method generate_hex( varname:String, bytes:Byte[] )->String
+      local address_digits = ((bytes.count.minimum_bits + 7) / 8).or_larger( 1 ) * 2
+
+      local result = String()
+      local decode = String()
+      local n = 0
+      local byte_count = bytes.count
+      local limit = (byte_count + 31) & !31
+      forEach (i in 0..<limit)
+        local column = i & 31
+        if (column == 0)   result.print "$:"(i->String(&hex).rightmost(address_digits))
+        if (column&3 == 0) result.print ' '
+        if (i < byte_count)
+          local byte = bytes[i]
+          result.print byte->String(&hex)
+          if (byte >= 32 and byte <= 126)
+            decode.print( byte->Character )
+          elseIf (byte == '\n')
+            ConsoleStyle.set<<DIM>>( decode )
+            decode.print( '\[23ce]' )
+            ConsoleStyle.set<<DIM_OFF>>( decode )
+          elseIf (byte == '\t')
+            ConsoleStyle.set<<DIM>>( decode )
+            decode.print( '^' )
+            ConsoleStyle.set<<DIM_OFF>>( decode )
+          elseIf (byte == 0)
+            ConsoleStyle.set<<DIM>>( decode )
+            decode.print( '0' )
+            ConsoleStyle.set<<DIM_OFF>>( decode )
+          else
+            decode.print( '.' )
+          endIf
+        else
+          result.print "  "
+          decode.print ' '
+        endIf
+        if (column == 31) result.println " " + decode; decode.clear
+      endForEach
+      return result
+
+    method generate_js( varname:String, filetype:String, bytes:Byte[] )->String
+      local data = bytes.to_base64
+      filetype .= to_lowercase
+      if (filetype == "jpg") filetype = "jpeg"
+      which (filetype)
+        case "gif", "jpeg", "png"
+          return ''const $ = "data:image/$;base64,$";\n''(varname,filetype,data)
+        others
+          return ''const $ = "$";\n''(varname,data)
+      endWhich
+
+    method generate_rogue( varname:String, bytes:Byte[] )->String
+      local result = String()
+
+      result.println "local $ = Byte[]("(varname)
+      local lines = bytes.to_base64.split( -75 )
+      forEach (line at i in lines)
+        if (i) result.println "..."
+        result.print ''  "$"''(line)
+      endForEach
+      result.println ","
+      result.println "  &base64"
+      result.println ")"
+      return result
+
+    method parse_args( args:String[] )->Variant
+      local command = CommandLineParser().
+      [
+        option( "--help",    &aliases=["-h","-?"] )
+        option( "--target=", &alias="-t" )
+      ].parse( args )
+      return command
+
+    method print_usage
+      println "BinSrc v$"(VERSION)
+      println "$"(DATE)
+      println
+
+      println @|USAGE
+               |  binsrc [OPTIONS] filename ...
+               |
+               |OPTIONS
+               |  --help, -h, -?
+               |    Show this help text.
+               |
+               |  --target=<target>, -t <target>
+               |    Print source code for the specified target language:
+               |      c [default] - C/C++/C-like
+               |      hex         - Hex columns
+               |      js          - JavaScript
+               |      rogue       - Rogue/Boss
+endClass
