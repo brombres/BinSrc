@@ -30,9 +30,9 @@ Author    | Brom Bresenham
 
 # Examples
 
-## Test Image
-<center>![Images/BlueSquare.png](Images/BlueSquare.png)</center>
-<center>BlueSquare.png</center>
+## Test Image (BlueSquare.png)
+
+![Images/BlueSquare.png](Images/BlueSquare.png)
 
 ## C Target
     binsrc Images/BlueSquare.png -t c
