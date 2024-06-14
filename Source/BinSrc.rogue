@@ -3,7 +3,7 @@
 # April 6, 2024
 #================================================================================
 
-$define VERSION "1.1"
+$define VERSION "1.2"
 $define DATE    "June 14, 2024"
 
 $requireRogue "2.34"
