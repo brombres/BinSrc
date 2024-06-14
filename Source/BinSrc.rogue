@@ -100,7 +100,7 @@ class BinSrc
           elseIf (byte == '\t')
             decode.print( '\[21e5]' )
           elseIf (byte == 0)
-            decode.print( 'θ' )
+            decode.print( '⊙' )
           else
             decode.print( '.' )
           endIf
