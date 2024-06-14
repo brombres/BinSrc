@@ -3,8 +3,8 @@ Converts the bytes of a binary file into source code (C/C++, JavaScript, Rogue) 
 
 About     | Current Release
 ----------|-----------------------
-Version   | 1.0.1
-Date      | April 10, 2024
+Version   | 1.1
+Date      | June 14, 2024
 Platforms | Windows, macOS, Linux
 Author    | Brom Bresenham
 
